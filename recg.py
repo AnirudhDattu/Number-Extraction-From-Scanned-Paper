@@ -124,6 +124,8 @@ def proc_user_img(img_file, model):
 
     digits_rectangles = get_digits(contours, hierarchy)  # rectangles of bounding the digits in user image
 
+    recognized_digits_data = {'X': [], 'Y': [], 'Digit': []}
+
     for rect in digits_rectangles:
         x, y, w, h = rect
         cv2.rectangle(im, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -133,13 +135,26 @@ def proc_user_img(img_file, model):
 
         hog_img_data = pixels_to_hog_20([im_digit])
         pred = model.predict(hog_img_data)
+
+        # Store the recognized digit data
+        recognized_digits_data['X'].append(x)
+        recognized_digits_data['Y'].append(y)
+        recognized_digits_data['Digit'].append(int(pred[0]))
+
         cv2.putText(im, str(int(pred[0])), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 3)
         cv2.putText(blank_image, str(int(pred[0])), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 0, 0), 5)
+
+    # Create a DataFrame from the recognized digits data
+    df = pd.DataFrame(recognized_digits_data)
+
+    # Save DataFrame to Excel
+    df.to_excel("recognized_digits_data.xlsx", index=False)
 
     plt.imshow(im)
     cv2.imwrite("original_overlay.png", im)
     cv2.imwrite("final_digits.png", blank_image)
-    # cv2.destroyAllWindows()
+
+    cv2.destroyAllWindows()
 
 
 def get_contour_precedence(contour, cols):
