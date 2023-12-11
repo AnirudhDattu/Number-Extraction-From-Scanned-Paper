@@ -9,6 +9,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.utils import shuffle
 import pandas as pd
+import os
+
 
 
 DIGIT_WIDTH = 10
@@ -147,13 +149,34 @@ def proc_user_img(img_file, model):
     # Create a DataFrame from the recognized digits data
     df = pd.DataFrame(recognized_digits_data)
 
-    # Save DataFrame to Excel
-    df.to_excel("recognized_digits_data.xlsx", index=False)
+    df = df.sort_values(by='Y')
+
+    # Create the "output" folder if it doesn't exist
+    output_folder = 'output'
+    os.makedirs(output_folder, exist_ok=True)
+
+    # Save DataFrame to Excel with threshold for y-axis
+    y_threshold = 30
+    output_path = os.path.join(output_folder, "recognized_digits_data.xlsx")
+    with pd.ExcelWriter(output_path, engine='xlsxwriter') as writer:
+        sheet_name = 'Sheet1'
+        current_row = 0
+
+        for _, row in df.iterrows():
+            if current_row == 0 or abs(row['Y'] - df.iloc[current_row + 1]['Y']) <= y_threshold:
+                df.iloc[current_row] = row
+                current_row += 1
+            else:
+                current_row = 0
+
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+
+    original_overlay_path = os.path.join(output_folder, "original_overlay.png")
+    final_digits_path = os.path.join(output_folder, "final_digits.png")
 
     plt.imshow(im)
-    cv2.imwrite("original_overlay.png", im)
-    cv2.imwrite("final_digits.png", blank_image)
-
+    cv2.imwrite(original_overlay_path, im)
+    cv2.imwrite(final_digits_path, blank_image)
     cv2.destroyAllWindows()
 
 
