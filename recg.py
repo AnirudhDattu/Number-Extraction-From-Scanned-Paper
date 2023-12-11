@@ -17,7 +17,7 @@ DIGIT_WIDTH = 10
 DIGIT_HEIGHT = 20
 IMG_HEIGHT = 28
 IMG_WIDTH = 28
-CLASS_N = 10  # 0-9
+CLASS_N = 10  
 
 
 # This method splits the input training image into small cells (of a single digit) and uses these cells as training data.
@@ -96,11 +96,6 @@ def get_digits(contours, hierarchy):
 
     for r, hr in zip(bounding_rectangles, hierarchy):
         x, y, w, h = r
-        # this could vary depending on the image you are trying to predict
-        # we are trying to extract ONLY the rectangles with images in it (this is a very simple way to do it)
-        # we use heirarchy to extract only the boxes that are in the same global level - to avoid digits inside other digits
-        # ex: there could be a bounding box inside every 6,9,8 because of the loops in the number's appearence - we don't want that.
-        # read more about it here: https://docs.opencv.org/trunk/d9/d8b/tutorial_py_contours_hierarchy.html
         if ((w * h) > 250) and (10 <= w <= 200) and (10 <= h <= 200) and hr[3] == most_common_heirarchy:
             final_bounding_rectangles.append(r)
 
@@ -124,13 +119,12 @@ def proc_user_img(img_file, model):
 
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    digits_rectangles = get_digits(contours, hierarchy)  # rectangles of bounding the digits in user image
+    digits_rectangles = get_digits(contours, hierarchy)  # rectangles of bounding the digits in the user image
 
     recognized_digits_data = {'X': [], 'Y': [], 'Digit': []}
 
     for rect in digits_rectangles:
         x, y, w, h = rect
-        cv2.rectangle(im, (x, y), (x + w, y + h), (0, 255, 0), 2)
         im_digit = imgray[y:y + h, x:x + w]
         im_digit = (255 - im_digit)
         im_digit = imresize(im_digit, (IMG_WIDTH, IMG_HEIGHT))
@@ -143,13 +137,11 @@ def proc_user_img(img_file, model):
         recognized_digits_data['Y'].append(y)
         recognized_digits_data['Digit'].append(int(pred[0]))
 
-        cv2.putText(im, str(int(pred[0])), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 3)
-        cv2.putText(blank_image, str(int(pred[0])), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 0, 0), 5)
-
     # Create a DataFrame from the recognized digits data
     df = pd.DataFrame(recognized_digits_data)
 
-    df = df.sort_values(by='Y')
+    # Sort the DataFrame by Y and then X
+    df = df.sort_values(by=['Y', 'X'])
 
     # Create the "output" folder if it doesn't exist
     output_folder = 'output'
@@ -178,6 +170,7 @@ def proc_user_img(img_file, model):
     cv2.imwrite(original_overlay_path, im)
     cv2.imwrite(final_digits_path, blank_image)
     cv2.destroyAllWindows()
+
 
 
 def get_contour_precedence(contour, cols):
